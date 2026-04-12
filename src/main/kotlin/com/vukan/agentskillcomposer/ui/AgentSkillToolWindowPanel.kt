@@ -1,11 +1,18 @@
 package com.vukan.agentskillcomposer.ui
 
+import com.intellij.notification.Notification
+import com.intellij.notification.NotificationType
+import com.intellij.notification.Notifications
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
 import com.vukan.agentskillcomposer.MyMessageBundle
+import com.vukan.agentskillcomposer.analysis.ProjectAnalyzer
+import com.vukan.agentskillcomposer.model.AnalysisResult
 import com.vukan.agentskillcomposer.model.GeneratedArtifact
 import com.vukan.agentskillcomposer.model.ProjectFacts
 import com.vukan.agentskillcomposer.model.SampleData
@@ -55,15 +62,38 @@ class AgentSkillToolWindowPanel(
     }
 
     private fun onAnalyze() {
-        val projectRoot = project.basePath?.let { java.nio.file.Path.of(it) }
-            ?: java.nio.file.Path.of(".")
+        val analyzer = project.getService(ProjectAnalyzer::class.java)
 
-        val facts = SampleData.createSampleFacts(projectRoot)
-        currentFacts = facts
-        generatedArtifacts = emptyList()
+        object : Task.Backgroundable(project, MyMessageBundle.message("progress.analyzing"), true) {
+            private var result: AnalysisResult? = null
 
-        analysisSummaryPanel.update(facts)
-        generationFormPanel.reveal(facts)
-        statusPanel.clear()
+            override fun run(indicator: ProgressIndicator) {
+                result = analyzer.analyze(indicator)
+            }
+
+            override fun onSuccess() {
+                when (val r = result) {
+                    is AnalysisResult.Success -> {
+                        currentFacts = r.facts
+                        generatedArtifacts = emptyList()
+                        analysisSummaryPanel.update(r.facts)
+                        generationFormPanel.reveal(r.facts)
+                        statusPanel.clear()
+                    }
+                    is AnalysisResult.Failure -> {
+                        Notifications.Bus.notify(
+                            Notification(
+                                "Agent Skill Composer",
+                                MyMessageBundle.message("error.analysisFailedTitle"),
+                                MyMessageBundle.message("error.analysisFailedMessage", r.message),
+                                NotificationType.ERROR,
+                            ),
+                            project,
+                        )
+                    }
+                    null -> { /* cancelled */ }
+                }
+            }
+        }.queue()
     }
 }

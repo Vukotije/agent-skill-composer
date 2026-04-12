@@ -21,5 +21,12 @@
         <toolWindow id="Agent Skill Composer"
                     factoryClass="com.vukan.agentskillcomposer.ui.AgentSkillToolWindowFactory"
                     icon="AllIcons.Actions.ProjectWideAnalysis"/>
+
+        <projectService
+                serviceInterface="com.vukan.agentskillcomposer.analysis.ProjectAnalyzer"
+                serviceImplementation="com.vukan.agentskillcomposer.analysis.impl.DefaultProjectAnalyzer"/>
+
+        <notificationGroup id="Agent Skill Composer"
+                           displayType="BALLOON"/>
     </extensions>
 </idea-plugin>
