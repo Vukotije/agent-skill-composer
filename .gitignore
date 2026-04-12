@@ -1,0 +1,14 @@
+.DS_Store
+.gradle
+.idea
+.intellijPlatform
+.kotlin
+.qodana
+build
+*.iml
+
+### Claude Code ###
+.claude/
+
+### Windows ###
+*:Zone.Identifier
