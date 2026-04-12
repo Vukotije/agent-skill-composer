@@ -25,8 +25,6 @@ dependencies {
 
         bundledPlugin("com.intellij.java")
         bundledPlugin("org.jetbrains.kotlin")
-        bundledPlugin("org.jetbrains.plugins.yaml")
-        bundledPlugin("org.intellij.plugins.markdown")
     }
 }
 
