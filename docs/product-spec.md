@@ -35,7 +35,7 @@ Secondary user:
 ## Non-goals
 
 - Generic chat assistant
-- Full MCP server in MVP
+- MCP support (descoped)
 - Full language-agnostic code understanding
 - Full autonomous agent execution
 - Deep repository indexing or huge multi-file intelligence
