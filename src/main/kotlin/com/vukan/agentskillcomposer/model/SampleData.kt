@@ -119,8 +119,12 @@ object SampleData {
         ),
     )
 
-    fun createSampleArtifact(target: GenerationTarget, artifactType: ArtifactType): GeneratedArtifact {
-        val (title, content, path) = when (target) {
+    fun createSampleArtifact(
+        target: GenerationTarget,
+        artifactType: ArtifactType,
+        defaultPath: String,
+    ): GeneratedArtifact {
+        val (title, content) = when (target) {
             GenerationTarget.JUNIE -> junieArtifact(artifactType)
             GenerationTarget.CLAUDE -> claudeArtifact(artifactType)
         }
@@ -129,43 +133,35 @@ object SampleData {
             artifactType = artifactType,
             title = title,
             content = content,
-            defaultPath = path,
+            defaultPath = defaultPath,
         )
     }
 
-    private fun junieArtifact(type: ArtifactType): Triple<String, String, String> = when (type) {
-        is ArtifactType.ProjectGuidance -> Triple(
+    private fun junieArtifact(type: ArtifactType): Pair<String, String> = when (type) {
+        is ArtifactType.ProjectGuidance -> Pair(
             "Junie Project Guidance",
             SAMPLE_JUNIE_AGENTS_MD,
-            ".junie/AGENTS.md",
         )
-        is ArtifactType.Skill -> Triple(
+        is ArtifactType.Skill -> Pair(
             "Junie ${type.displayName} Skill",
             sampleSkillContent(type.suggestion),
-            ".junie/skills/${type.id}/SKILL.md",
         )
-        is ArtifactType.ReviewChangesCommand -> Triple(
-            "Review Changes (N/A for Junie)",
-            "This artifact type is not available for Junie.",
-            "",
-        )
+        is ArtifactType.ReviewChangesCommand ->
+            error("ReviewChangesCommand is not applicable to Junie")
     }
 
-    private fun claudeArtifact(type: ArtifactType): Triple<String, String, String> = when (type) {
-        is ArtifactType.ProjectGuidance -> Triple(
+    private fun claudeArtifact(type: ArtifactType): Pair<String, String> = when (type) {
+        is ArtifactType.ProjectGuidance -> Pair(
             "Claude Project Guidance",
             SAMPLE_CLAUDE_MD,
-            "CLAUDE.md",
         )
-        is ArtifactType.Skill -> Triple(
+        is ArtifactType.Skill -> Pair(
             "Claude ${type.displayName} Skill",
             sampleSkillContent(type.suggestion),
-            ".claude/skills/${type.id}/SKILL.md",
         )
-        is ArtifactType.ReviewChangesCommand -> Triple(
+        is ArtifactType.ReviewChangesCommand -> Pair(
             "Claude Review Changes Command",
             SAMPLE_REVIEW_CHANGES_COMMAND,
-            ".claude/commands/review-changes.md",
         )
     }
 

@@ -16,6 +16,8 @@ import com.vukan.agentskillcomposer.model.AnalysisResult
 import com.vukan.agentskillcomposer.model.GeneratedArtifact
 import com.vukan.agentskillcomposer.model.ProjectFacts
 import com.vukan.agentskillcomposer.model.SampleData
+import com.vukan.agentskillcomposer.output.TargetPathResolver
+import com.vukan.agentskillcomposer.output.impl.DefaultTargetPathResolver
 import javax.swing.BoxLayout
 import javax.swing.JPanel
 
@@ -23,6 +25,7 @@ class AgentSkillToolWindowPanel(
     private val project: Project,
 ) : SimpleToolWindowPanel(true, true) {
 
+    private val pathResolver: TargetPathResolver = DefaultTargetPathResolver()
     private val analysisSummaryPanel = AnalysisSummaryPanel()
     private val generationFormPanel = GenerationFormPanel()
     private val statusPanel = GenerationStatusPanel()
@@ -51,9 +54,12 @@ class AgentSkillToolWindowPanel(
     }
 
     private fun wireCallbacks() {
+        generationFormPanel.pathResolver = { target, type ->
+            pathResolver.resolveRelativePath(target, type)
+        }
         generationFormPanel.onGenerate = { target, artifactTypes, _ ->
             val artifacts = artifactTypes.map { type ->
-                SampleData.createSampleArtifact(target, type)
+                SampleData.createSampleArtifact(target, type, pathResolver.resolveRelativePath(target, type))
             }
             generatedArtifacts = artifacts
             statusPanel.update(artifacts)

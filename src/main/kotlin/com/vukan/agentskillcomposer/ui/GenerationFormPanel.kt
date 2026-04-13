@@ -10,6 +10,7 @@ import com.vukan.agentskillcomposer.model.ArtifactType
 import com.vukan.agentskillcomposer.model.GenerationTarget
 import com.vukan.agentskillcomposer.model.ProjectFacts
 import com.vukan.agentskillcomposer.model.SkillSuggestion
+import com.vukan.agentskillcomposer.output.PathResolverFn
 import java.awt.BorderLayout
 import javax.swing.BoxLayout
 import javax.swing.JCheckBox
@@ -30,6 +31,7 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
 
     private var currentSkills: List<SkillSuggestion> = emptyList()
 
+    var pathResolver: PathResolverFn? = null
     var onGenerate: ((GenerationTarget, List<ArtifactType>, String?) -> Unit)? = null
 
     init {
@@ -94,7 +96,13 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
                 is ArtifactType.Skill -> "${type.description} — ${type.suggestion.reason}"
                 else -> type.description
             }
-            val checkBox = JCheckBox(type.displayName).apply {
+            val resolvedPath = pathResolver?.invoke(target, type)
+            val label = if (resolvedPath != null) {
+                MyMessageBundle.message("label.artifactPath", type.displayName, resolvedPath)
+            } else {
+                type.displayName
+            }
+            val checkBox = JCheckBox(label).apply {
                 toolTipText = tooltip
                 isSelected = type is ArtifactType.ProjectGuidance
             }
