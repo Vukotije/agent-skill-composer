@@ -20,12 +20,12 @@ Main responsibilities:
 - show preview and save actions
 - display errors and progress
 
-Suggested classes:
-- `AgentSkillToolWindowFactory`
-- `AgentSkillToolWindowPanel`
-- `AnalysisSummaryPanel`
-- `GenerationFormPanel`
-- `ArtifactPreviewPanel`
+Implemented classes (in `ui/`):
+- `AgentSkillToolWindowFactory` — registered in plugin.xml
+- `AgentSkillToolWindowPanel` — orchestrator; hosts the Analyze button, analysis summary, generation form, and status panel; owns a gear toolbar action for the settings dialog
+- `AnalysisSummaryPanel` — renders `ProjectFacts`
+- `GenerationFormPanel` — target combo, artifact-type checkboxes with inline resolved paths, optional instructions, Generate button, plus embedded progress bar / per-artifact status list / final summary. `setGenerating(Boolean)` freezes the whole form during a run and shows a spinner on the button. Progress APIs: `showProgress(total)`, `updateProgress(completed, total, result)`, `showDone(artifacts)`.
+- `EditorPreviewHelper` — opens each generated artifact as a read-only `LightVirtualFile` in an editor tab. Chosen over a dedicated preview panel because editor tabs give users syntax highlighting, search, and a familiar UX. The save path (M5) will write these files to disk.
 
 ### Analysis layer
 Responsible for deterministic repository inspection using IntelliJ SDK APIs (PSI, resolved dependency model, facets, Kotlin PSI).
@@ -69,13 +69,23 @@ Main responsibilities:
 - call the configured AI provider
 - post-process responses into artifacts
 
-Suggested classes:
-- `PromptFactory`
-- `AiProvider`
-- `AnthropicProvider` or `OpenAiCompatibleProvider`
-- `ProjectGuidanceGenerator`
-- `SkillGenerator`
-- `CommandGenerator`
+Implemented classes (in `generation/`):
+- `AiProvider` — interface: `suspend fun generate(systemPrompt, userPrompt): String` + `suspend fun listModels(): List<String>`
+- `AiProviderFactory` — object: two overloads. `create(PluginSettings)` requires a non-blank API key; `create(ProviderType, apiKey, baseUrl, modelName)` used by the settings dialog to probe models before saving.
+- `PromptFactory` — interface: `buildSystemPrompt(target, artifactType)` + `buildUserPrompt(request)`
+- `PromptTemplates` — static template text per (target, artifactType), 5 valid combinations
+- `ArtifactGenerator` — interface: `suspend fun generate(request): GenerationResult`
+- `impl/HttpAiProvider` — abstract base: JDK 21 `HttpClient` + bundled Gson, `withContext(Dispatchers.IO)`, unified `sendRequest` helper for both generate and list-models
+- `impl/OpenAiCompatibleProvider` — `POST /chat/completions`, `GET /models`. Covers native OpenAI and any OpenAI-compatible endpoint (Ollama, Azure, local).
+- `impl/AnthropicProvider` — `POST /v1/messages`, `GET /v1/models`, `anthropic-version: 2023-06-01`, `max_tokens: 8192`
+- `impl/GeminiProvider` — `POST /v1beta/models/{model}:generateContent`, `GET /v1beta/models` filtered to entries whose `supportedGenerationMethods` contain `generateContent`
+- `impl/DefaultPromptFactory` — serializes ProjectFacts into structured prompt sections
+- `impl/DefaultArtifactGenerator` — orchestrates PromptFactory → AiProvider → GeneratedArtifact. Rethrows `CancellationException`, wraps everything else in `GenerationResult.Failure`.
+
+Settings (in `settings/`):
+- `PluginSettings` — `PersistentStateComponent` for provider type, baseUrl, and model name; `PasswordSafe` for API key
+- `ProviderType` — enum of `ANTHROPIC`, `OPENAI`, `GEMINI`, `OPENAI_COMPATIBLE` with display name + default base URL only. Model lists come from live fetch; no hardcoded IDs.
+- `PluginSettingsConfigurable` — Settings > Tools > Agent Skill Composer (Kotlin UI DSL v2). Model fetch runs on `ApplicationManager.executeOnPooledThread` with `SwingUtilities.invokeLater` for EDT callbacks — coroutines are unreliable at application scope (Dispatchers.EDT doesn't resume after withContext(IO) in a Configurable lifecycle). `@Volatile fetching` flag prevents concurrent requests. Model combo stays editable so users can type IDs the server doesn't return.
 
 ### Output layer
 Responsible for target-specific rendering and file writing.
@@ -199,5 +209,4 @@ After MVP, the architecture should support:
 - more artifact types
 - more AI providers
 - update-in-place workflows
-- MCP export layer
 - more analyzers
