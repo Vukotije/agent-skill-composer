@@ -29,16 +29,30 @@ import com.vukan.agentskillcomposer.model.GenerationRequest
 import com.vukan.agentskillcomposer.model.GenerationResult
 import com.vukan.agentskillcomposer.model.GenerationTarget
 import com.vukan.agentskillcomposer.model.ProjectFacts
+import com.vukan.agentskillcomposer.output.ArtifactMetadata
+import com.vukan.agentskillcomposer.output.ArtifactMetadataResolver
+import com.vukan.agentskillcomposer.output.ArtifactRenderer
+import com.vukan.agentskillcomposer.output.ArtifactWriter
+import com.vukan.agentskillcomposer.output.SaveResult
+import com.vukan.agentskillcomposer.output.SaveStatus
 import com.vukan.agentskillcomposer.output.TargetPathResolver
+import com.vukan.agentskillcomposer.output.impl.DefaultArtifactRenderer
+import com.vukan.agentskillcomposer.output.impl.DefaultArtifactWriter
 import com.vukan.agentskillcomposer.output.impl.DefaultTargetPathResolver
 import com.vukan.agentskillcomposer.settings.PluginSettings
 import com.vukan.agentskillcomposer.settings.PluginSettingsConfigurable
 import com.intellij.icons.AllIcons
+import com.intellij.ide.projectView.ProjectView
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.AnimatedIcon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.nio.file.Files
+import java.nio.file.Path
 import javax.swing.BoxLayout
 import javax.swing.JButton
 import javax.swing.JPanel
@@ -48,11 +62,15 @@ class AgentSkillToolWindowPanel(
 ) : SimpleToolWindowPanel(true, true) {
 
     private val pathResolver: TargetPathResolver = DefaultTargetPathResolver()
+    private val metadataResolver = ArtifactMetadataResolver(pathResolver)
+    private val renderer: ArtifactRenderer = DefaultArtifactRenderer()
+    private val writer: ArtifactWriter = DefaultArtifactWriter()
     private val analysisSummaryPanel = AnalysisSummaryPanel()
     private val generationFormPanel = GenerationFormPanel()
 
     private var currentFacts: ProjectFacts? = null
     private var generatedArtifacts: List<GeneratedArtifact> = emptyList()
+    private var previewFiles: List<VirtualFile> = emptyList()
     private var analyzeButton: JButton? = null
     private val spinnerIcon = AnimatedIcon.Default()
 
@@ -102,6 +120,9 @@ class AgentSkillToolWindowPanel(
         generationFormPanel.onGenerate = { target, artifactTypes, userInstructions ->
             onGenerate(target, artifactTypes, userInstructions)
         }
+        generationFormPanel.onSaveAll = { artifacts ->
+            onSaveAll(artifacts)
+        }
     }
 
     private fun onGenerate(
@@ -138,7 +159,7 @@ class AgentSkillToolWindowPanel(
 
             val generator = DefaultArtifactGenerator(
                 aiProvider = provider,
-                promptFactory = DefaultPromptFactory(),
+                promptFactory = DefaultPromptFactory(pathResolver),
                 pathResolver = pathResolver,
             )
 
@@ -163,15 +184,112 @@ class AgentSkillToolWindowPanel(
                 val successes = results.filterIsInstance<GenerationResult.Success>()
                 val failures = results.filterIsInstance<GenerationResult.Failure>()
 
+                EditorPreviewHelper.closePreviews(project, previewFiles)
+                previewFiles = emptyList()
+
                 generatedArtifacts = successes.map { it.artifact }
                 generationFormPanel.showDone(generatedArtifacts)
 
                 if (generatedArtifacts.isNotEmpty()) {
-                    EditorPreviewHelper.openAllInEditor(project, generatedArtifacts)
+                    previewFiles = EditorPreviewHelper.openAllInEditor(project, generatedArtifacts)
                 }
                 failures.forEach { showErrorNotification(it.message) }
                 generationFormPanel.setGenerating(false)
             }
+        }
+    }
+
+    private data class SaveJob(
+        val artifact: GeneratedArtifact,
+        val metadata: ArtifactMetadata,
+        val renderedContent: String,
+        val absolutePath: Path,
+    )
+
+    private fun onSaveAll(artifacts: List<GeneratedArtifact>) {
+        val projectRoot = currentFacts?.projectRoot ?: return
+        if (artifacts.isEmpty()) return
+
+        val jobs = artifacts.map { artifact ->
+            val metadata = metadataResolver.resolve(artifact.target, artifact.artifactType)
+            SaveJob(
+                artifact = artifact,
+                metadata = metadata,
+                renderedContent = renderer.render(artifact, metadata),
+                absolutePath = projectRoot.resolve(metadata.relativePath),
+            )
+        }
+
+        val conflicts = jobs.filter { Files.exists(it.absolutePath) }
+        if (conflicts.isNotEmpty() && !confirmOverwrite(conflicts)) return
+
+        generationFormPanel.setSaving(true)
+        val results = try {
+            jobs.map { job -> writer.save(projectRoot, job.metadata, job.renderedContent) }
+        } finally {
+            generationFormPanel.setSaving(false)
+        }
+
+        if (results.any { it is SaveResult.Saved }) {
+            EditorPreviewHelper.closePreviews(project, previewFiles)
+            previewFiles = emptyList()
+        }
+        notifySaveOutcome(results)
+    }
+
+    private fun confirmOverwrite(conflicts: List<SaveJob>): Boolean {
+        val list = conflicts.joinToString("\n") { "• ${it.metadata.relativePath}" }
+        val answer = Messages.showYesNoDialog(
+            project,
+            MyMessageBundle.message("dialog.overwrite.message", list),
+            MyMessageBundle.message("dialog.overwrite.title"),
+            MyMessageBundle.message("dialog.overwrite.yes"),
+            MyMessageBundle.message("dialog.overwrite.no"),
+            Messages.getWarningIcon(),
+        )
+        return answer == Messages.YES
+    }
+
+    private fun notifySaveOutcome(results: List<SaveResult>) {
+        val saved = results.filterIsInstance<SaveResult.Saved>()
+        val failed = results.filterIsInstance<SaveResult.Failed>()
+
+        if (saved.isNotEmpty()) {
+            val created = saved.count { it.status == SaveStatus.CREATED }
+            val overwritten = saved.count { it.status == SaveStatus.OVERWRITTEN }
+            val body = buildString {
+                if (created > 0) appendLine(MyMessageBundle.message("notification.savedCreated", created))
+                if (overwritten > 0) appendLine(MyMessageBundle.message("notification.savedOverwritten", overwritten))
+            }.trim()
+
+            val notification = Notification(
+                "Agent Skill Composer",
+                MyMessageBundle.message("notification.savedTitle"),
+                body,
+                NotificationType.INFORMATION,
+            )
+            val firstFile = LocalFileSystem.getInstance().findFileByNioFile(saved.first().path)
+            if (firstFile != null) {
+                notification.addAction(
+                    NotificationAction.createSimple(MyMessageBundle.message("action.revealInProject")) {
+                        ProjectView.getInstance(project).select(null, firstFile, true)
+                    },
+                )
+            }
+            Notifications.Bus.notify(notification, project)
+        }
+
+        if (failed.isNotEmpty()) {
+            val body = failed.joinToString("\n") { "• ${it.path}: ${it.message}" }
+            Notifications.Bus.notify(
+                Notification(
+                    "Agent Skill Composer",
+                    MyMessageBundle.message("notification.saveFailedTitle"),
+                    body,
+                    NotificationType.ERROR,
+                ),
+                project,
+            )
         }
     }
 

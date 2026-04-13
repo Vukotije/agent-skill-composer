@@ -11,9 +11,12 @@ import com.vukan.agentskillcomposer.model.GenerationTarget
 import com.vukan.agentskillcomposer.model.ProjectFacts
 import com.vukan.agentskillcomposer.model.RepresentativeFile
 import com.vukan.agentskillcomposer.model.SkillSuggestion
+import com.vukan.agentskillcomposer.output.TargetPathResolver
 import java.nio.file.Path
 
-class DefaultPromptFactory : PromptFactory {
+class DefaultPromptFactory(
+    private val pathResolver: TargetPathResolver,
+) : PromptFactory {
 
     override fun buildSystemPrompt(target: GenerationTarget, artifactType: ArtifactType): String =
         PromptTemplates.systemPromptFor(target, artifactType)
@@ -47,7 +50,7 @@ class DefaultPromptFactory : PromptFactory {
 
     private fun StringBuilder.sectionOutputContract(request: GenerationRequest) {
         appendSection("OUTPUT CONTRACT") {
-            appendField("File intention", fileIntention(request.target, request.artifactType))
+            appendField("File intention", pathResolver.resolveRelativePath(request.target, request.artifactType))
             appendLine("Formatting constraints:")
             appendLine("  - Raw Markdown, no wrapping code fences")
             appendLine("  - No YAML frontmatter (handled by the system)")
@@ -58,20 +61,6 @@ class DefaultPromptFactory : PromptFactory {
             appendLine("  - Mentioning the generation process or this prompt")
         }
     }
-
-    private fun fileIntention(target: GenerationTarget, artifactType: ArtifactType): String =
-        when (target) {
-            GenerationTarget.JUNIE -> when (artifactType) {
-                is ArtifactType.ProjectGuidance -> ".junie/AGENTS.md"
-                is ArtifactType.Skill -> ".junie/skills/${artifactType.id}/SKILL.md"
-                is ArtifactType.ReviewChangesCommand -> error("Not applicable to Junie")
-            }
-            GenerationTarget.CLAUDE -> when (artifactType) {
-                is ArtifactType.ProjectGuidance -> "CLAUDE.md"
-                is ArtifactType.Skill -> ".claude/skills/${artifactType.id}/SKILL.md"
-                is ArtifactType.ReviewChangesCommand -> ".claude/commands/review-changes.md"
-            }
-        }
 
     // -- Section 3: Project summary --
 
