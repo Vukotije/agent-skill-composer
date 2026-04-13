@@ -82,11 +82,17 @@ Responsible for target-specific rendering and file writing.
 
 Main responsibilities:
 - map target + artifact type to output path
+- resolve artifact metadata (frontmatter rules)
 - build final markdown content
 - write files safely
 
-Suggested classes:
-- `TargetPathResolver`
+Implemented classes (in `output/`):
+- `TargetPathResolver` — interface with `resolveRelativePath` (display) and `resolveOutputPath` (absolute `Path`)
+- `DefaultTargetPathResolver` — exhaustive target+artifactType→path mapping with `require(applicableTo)` guard
+- `ArtifactMetadata` — data class: fileName, relativePath, requiresFrontmatter, frontmatterTemplate
+- `ArtifactMetadataResolver` — wraps `TargetPathResolver`, adds Junie skill frontmatter rules
+
+Planned classes (M5):
 - `ArtifactRenderer`
 - `ArtifactWriter`
 - `SaveResult`
