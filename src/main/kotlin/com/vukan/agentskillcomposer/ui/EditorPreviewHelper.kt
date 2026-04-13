@@ -8,12 +8,6 @@ import com.vukan.agentskillcomposer.model.GeneratedArtifact
 
 object EditorPreviewHelper {
 
-    fun openInEditor(project: Project, artifact: GeneratedArtifact) {
-        val fileName = artifact.previewFileName
-        val file = LightVirtualFile(fileName, artifact.content)
-        FileEditorManager.getInstance(project).openFile(file, true)
-    }
-
     fun openAllInEditor(project: Project, artifacts: List<GeneratedArtifact>) {
         artifacts.forEachIndexed { index, artifact ->
             val focusOnOpen = index == 0
@@ -24,7 +18,4 @@ object EditorPreviewHelper {
 }
 
 private val GeneratedArtifact.previewFileName: String
-    get() {
-        val base = defaultPath.substringAfterLast('/')
-        return MyMessageBundle.message("editor.previewPrefix", base)
-    }
+    get() = MyMessageBundle.message("editor.previewPrefix", defaultPath)

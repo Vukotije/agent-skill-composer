@@ -1,5 +1,7 @@
 package com.vukan.agentskillcomposer.ui
 
+import com.intellij.ui.AnimatedIcon
+import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
@@ -7,15 +9,19 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
 import com.vukan.agentskillcomposer.MyMessageBundle
 import com.vukan.agentskillcomposer.model.ArtifactType
+import com.vukan.agentskillcomposer.model.GeneratedArtifact
+import com.vukan.agentskillcomposer.model.GenerationResult
 import com.vukan.agentskillcomposer.model.GenerationTarget
 import com.vukan.agentskillcomposer.model.ProjectFacts
 import com.vukan.agentskillcomposer.model.SkillSuggestion
 import com.vukan.agentskillcomposer.output.PathResolverFn
 import java.awt.BorderLayout
 import javax.swing.BoxLayout
+import javax.swing.JButton
 import javax.swing.JCheckBox
 import javax.swing.JComboBox
 import javax.swing.JPanel
+import javax.swing.JProgressBar
 
 class GenerationFormPanel : JPanel(BorderLayout()) {
 
@@ -30,6 +36,15 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
     }
 
     private var currentSkills: List<SkillSuggestion> = emptyList()
+    private var generateButton: JButton? = null
+    private val spinnerIcon = AnimatedIcon.Default()
+
+    private val progressBar = JProgressBar().apply { isVisible = false }
+    private val progressLabel = JBLabel(" ").apply { isVisible = false }
+    private val resultContainer = JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        isVisible = false
+    }
 
     var pathResolver: PathResolverFn? = null
     var onGenerate: ((GenerationTarget, List<ArtifactType>, String?) -> Unit)? = null
@@ -63,6 +78,16 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
                 row {
                     button(MyMessageBundle.message("action.generate")) { fireGenerate() }
                         .align(AlignX.LEFT)
+                        .applyToComponent { generateButton = this }
+                }
+                row {
+                    cell(progressBar).align(AlignX.FILL)
+                }
+                row {
+                    cell(progressLabel)
+                }
+                row {
+                    cell(resultContainer).align(AlignX.FILL)
                 }
             }
         }
@@ -73,15 +98,89 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
     fun reveal(facts: ProjectFacts) {
         currentSkills = facts.suggestedSkills
         refreshArtifactCheckBoxes()
+        clearProgress()
         isVisible = true
         revalidate()
         repaint()
     }
 
-    fun clear() {
-        isVisible = false
-        instructionsArea.text = ""
-        currentSkills = emptyList()
+    fun setGenerating(generating: Boolean) {
+        val enabled = !generating
+        targetCombo.isEnabled = enabled
+        instructionsArea.isEnabled = enabled
+        artifactCheckBoxes.values.forEach { it.isEnabled = enabled }
+        generateButton?.apply {
+            isEnabled = enabled && hasSelection()
+            icon = if (generating) spinnerIcon else null
+            text = if (generating) {
+                MyMessageBundle.message("action.generating")
+            } else {
+                MyMessageBundle.message("action.generate")
+            }
+        }
+        if (generating) {
+            resultContainer.removeAll()
+            resultContainer.isVisible = false
+        }
+    }
+
+    private fun hasSelection(): Boolean =
+        artifactCheckBoxes.values.any { it.isSelected }
+
+    private fun refreshGenerateButtonEnabled() {
+        generateButton?.isEnabled = hasSelection()
+    }
+
+    fun showProgress(total: Int) {
+        progressBar.apply {
+            minimum = 0
+            maximum = total
+            value = 0
+            isIndeterminate = false
+            isVisible = true
+        }
+        progressLabel.apply {
+            text = MyMessageBundle.message("progress.generating", 0, total)
+            isVisible = true
+        }
+        revalidate()
+        repaint()
+    }
+
+    fun updateProgress(completed: Int, total: Int, result: GenerationResult) {
+        progressBar.value = completed
+        progressLabel.text = MyMessageBundle.message("progress.generating", completed, total)
+
+        val line = JBLabel(
+            when (result) {
+                is GenerationResult.Success ->
+                    "${MyMessageBundle.message("status.success")} ${result.artifact.artifactType.displayName} \u2192 ${result.artifact.defaultPath}"
+                is GenerationResult.Failure ->
+                    "${MyMessageBundle.message("status.failed")} ${result.message}"
+            },
+        )
+        resultContainer.add(line)
+        resultContainer.isVisible = true
+        revalidate()
+        repaint()
+    }
+
+    fun showDone(artifacts: List<GeneratedArtifact>) {
+        progressBar.isVisible = false
+        if (artifacts.isNotEmpty()) {
+            progressLabel.text = MyMessageBundle.message("status.artifactsOpenedInEditor")
+        } else {
+            progressLabel.text = MyMessageBundle.message("status.allFailed")
+        }
+        revalidate()
+        repaint()
+    }
+
+    private fun clearProgress() {
+        progressBar.isVisible = false
+        progressLabel.isVisible = false
+        resultContainer.removeAll()
+        resultContainer.isVisible = false
     }
 
     private fun refreshArtifactCheckBoxes() {
@@ -105,6 +204,7 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
             val checkBox = JCheckBox(label).apply {
                 toolTipText = tooltip
                 isSelected = type is ArtifactType.ProjectGuidance
+                addItemListener { refreshGenerateButtonEnabled() }
             }
             artifactCheckBoxes[type] = checkBox
             checkBoxContainer.add(checkBox)
@@ -112,6 +212,7 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
 
         checkBoxContainer.revalidate()
         checkBoxContainer.repaint()
+        refreshGenerateButtonEnabled()
     }
 
     private fun fireGenerate() {
