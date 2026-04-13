@@ -26,6 +26,15 @@
                 serviceInterface="com.vukan.agentskillcomposer.analysis.ProjectAnalyzer"
                 serviceImplementation="com.vukan.agentskillcomposer.analysis.impl.DefaultProjectAnalyzer"/>
 
+        <applicationService
+                serviceImplementation="com.vukan.agentskillcomposer.settings.PluginSettings"/>
+
+        <applicationConfigurable
+                parentId="tools"
+                instance="com.vukan.agentskillcomposer.settings.PluginSettingsConfigurable"
+                id="com.vukan.agentskillcomposer.settings"
+                displayName="Agent Skill Composer"/>
+
         <notificationGroup id="Agent Skill Composer"
                            displayType="BALLOON"/>
     </extensions>
