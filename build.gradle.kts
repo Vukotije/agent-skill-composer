@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.vukan.agentskillcomposer"
-version = "1.0-SNAPSHOT"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
@@ -26,28 +26,41 @@ dependencies {
         bundledPlugin("com.intellij.java")
         bundledPlugin("org.jetbrains.kotlin")
     }
+
+    testImplementation(platform("org.junit:junit-bom:5.11.4"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "261"
+            untilBuild = "261.*"
         }
 
         changeNotes = """
-            Initial version
+            <h3>1.0.0</h3>
+            <ul>
+                <li>Analyze Kotlin/Java projects using IDE-native APIs (OrderEnumerator, PSI, AnnotatedElementsSearch, FacetManager, Kotlin AST).</li>
+                <li>Detect build system, frameworks, test frameworks, naming conventions, package structure, DI style, API routes, Kotlin idioms, concurrency model, validation, and multi-module layout.</li>
+                <li>Generate AI-backed guidance for Junie (<code>.junie/AGENTS.md</code>, <code>.junie/skills/&lt;id&gt;/SKILL.md</code>) and Claude Code (<code>CLAUDE.md</code>, <code>.claude/skills/&lt;id&gt;/SKILL.md</code>, <code>.claude/commands/review-changes.md</code>).</li>
+                <li>Supports Anthropic, OpenAI, Gemini, and any OpenAI-compatible provider. API key stored via PasswordSafe; live model discovery.</li>
+                <li>Preview artifacts as read-only editor tabs before saving; single Save All button with overwrite confirmation.</li>
+            </ul>
         """.trimIndent()
     }
 }
 
 tasks {
-    // Disabled for dev — re-enable before packaging a release build.
-    buildSearchableOptions {
-        enabled = false
-    }
-
     runIde {
         jvmArgs("-Xmx1536m")
+    }
+
+    test {
+        useJUnitPlatform()
+        maxHeapSize = "512m"
     }
 
     // Set the JVM compatibility versions
