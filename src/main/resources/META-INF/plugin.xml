@@ -47,7 +47,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="Agent Skill Composer"
                     factoryClass="com.vukan.agentskillcomposer.ui.AgentSkillToolWindowFactory"
-                    icon="AllIcons.Actions.ProjectWideAnalysis"/>
+                    icon="/icons/toolWindow.svg"/>
 
         <projectService
                 serviceInterface="com.vukan.agentskillcomposer.analysis.ProjectAnalyzer"
