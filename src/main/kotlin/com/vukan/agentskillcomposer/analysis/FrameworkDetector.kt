@@ -34,10 +34,6 @@ class FrameworkDetector {
             .distinctBy { it.name }
     }
 
-    /**
-     * Finds the primary application framework by checking for entry point annotations.
-     * This tells us which framework is actually driving the app, not just on the classpath.
-     */
     private fun detectPrimaryFramework(project: Project): List<DetectedFramework> {
         val scope = GlobalSearchScope.projectScope(project)
         val facade = JavaPsiFacade.getInstance(project)
@@ -58,9 +54,6 @@ class FrameworkDetector {
         return results
     }
 
-    /**
-     * Checks for framework-specific configuration files in the project.
-     */
     private fun detectFromConfigFiles(project: Project): List<DetectedFramework> {
         val projectDir = project.guessProjectDir() ?: return emptyList()
         val results = mutableListOf<DetectedFramework>()
@@ -83,9 +76,6 @@ class FrameworkDetector {
         return current
     }
 
-    /**
-     * Checks IDE-detected facets as a tertiary signal.
-     */
     private fun detectFromFacets(project: Project): List<DetectedFramework> {
         val results = mutableListOf<DetectedFramework>()
 

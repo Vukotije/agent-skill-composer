@@ -34,8 +34,6 @@ class DefaultPromptFactory(
         sectionFinalInstruction()
     }
 
-    // -- Section 1: Request metadata --
-
     private fun StringBuilder.sectionRequestMetadata(request: GenerationRequest) {
         appendSection("REQUEST METADATA") {
             appendField("Target", request.target.displayName)
@@ -45,8 +43,6 @@ class DefaultPromptFactory(
             }
         }
     }
-
-    // -- Section 2: Output contract --
 
     private fun StringBuilder.sectionOutputContract(request: GenerationRequest) {
         appendSection("OUTPUT CONTRACT") {
@@ -62,8 +58,6 @@ class DefaultPromptFactory(
         }
     }
 
-    // -- Section 3: Project summary --
-
     private fun StringBuilder.sectionProjectSummary(facts: ProjectFacts) {
         appendSection("PROJECT SUMMARY") {
             appendField("Project name", facts.projectName)
@@ -74,8 +68,6 @@ class DefaultPromptFactory(
             facts.buildSystem?.let { appendField("Build system", it.displayName) }
         }
     }
-
-    // -- Section 4: Frameworks and tooling --
 
     private fun StringBuilder.sectionFrameworks(facts: ProjectFacts) {
         if (facts.frameworks.isEmpty() && facts.testFrameworks.isEmpty()) return
@@ -98,8 +90,6 @@ class DefaultPromptFactory(
         appendLine("  - ${fw.name}$version [evidence: ${fw.evidence}]")
     }
 
-    // -- Section 5: Paths --
-
     private fun StringBuilder.sectionPaths(facts: ProjectFacts) {
         if (facts.sourceRoots.isEmpty() && facts.testRoots.isEmpty()) return
 
@@ -112,8 +102,6 @@ class DefaultPromptFactory(
             }
         }
     }
-
-    // -- Section 6: Detected conventions --
 
     private fun StringBuilder.sectionConventions(conventions: List<DetectedConvention>) {
         val relevant = conventions.filter { it.confidence != ConventionConfidence.LOW }
@@ -134,23 +122,27 @@ class DefaultPromptFactory(
         }
     }
 
-    // -- Section 7: Representative files --
-
     private fun StringBuilder.sectionRepresentativeFiles(files: List<RepresentativeFile>) {
         if (files.isEmpty()) return
 
         appendSection("REPRESENTATIVE FILES") {
             files.forEach { file ->
                 appendLine("[${file.role}] ${file.path}")
-                appendLine("```")
+                val fence = safeFence(file.snippet)
+                appendLine(fence)
                 appendLine(file.snippet.trimEnd())
-                appendLine("```")
+                appendLine(fence)
                 appendLine()
             }
         }
     }
 
-    // -- Section 8: Suggested skills --
+    // CommonMark: a closing fence must be at least as long as the opening fence.
+    // Use (longest backtick run in snippet) + 1 so a snippet containing ``` doesn't break out.
+    private fun safeFence(snippet: String): String {
+        val longestRun = Regex("`+").findAll(snippet).maxOfOrNull { it.value.length } ?: 0
+        return "`".repeat(maxOf(3, longestRun + 1))
+    }
 
     private fun StringBuilder.sectionSuggestedSkills(skills: List<SkillSuggestion>) {
         if (skills.isEmpty()) return
@@ -164,8 +156,6 @@ class DefaultPromptFactory(
         }
     }
 
-    // -- Section 9: User instructions --
-
     private fun StringBuilder.sectionUserInstructions(instructions: String?) {
         if (instructions.isNullOrBlank()) return
 
@@ -174,14 +164,10 @@ class DefaultPromptFactory(
         }
     }
 
-    // -- Section 10: Final instruction --
-
     private fun StringBuilder.sectionFinalInstruction() {
         appendLine("---")
         appendLine("Generate the final Markdown artifact now.")
     }
-
-    // -- Helpers --
 
     private inline fun StringBuilder.appendSection(title: String, block: StringBuilder.() -> Unit) {
         appendLine("=== $title ===")

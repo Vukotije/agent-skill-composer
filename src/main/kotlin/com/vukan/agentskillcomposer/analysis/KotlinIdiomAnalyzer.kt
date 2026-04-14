@@ -13,11 +13,6 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
 import java.util.concurrent.Callable
 
-/**
- * Detects Kotlin-specific idioms via the Kotlin PSI, not light classes.
- * Data classes, sealed hierarchies, extension functions, coroutines, companion objects.
- * This directly shapes what code style an AI agent should produce.
- */
 class KotlinIdiomAnalyzer {
 
     fun analyze(project: Project, sourceFiles: List<VirtualFile>): List<DetectedConvention> {
@@ -69,7 +64,6 @@ class KotlinIdiomAnalyzer {
     private fun buildConventions(counts: IdiomCounts, fileCount: Int): List<DetectedConvention> {
         val conventions = mutableListOf<DetectedConvention>()
 
-        // Data class usage
         if (counts.dataClasses >= 2) {
             val pct = if (counts.totalClasses > 0) counts.dataClasses * 100 / counts.totalClasses else 0
             conventions += DetectedConvention(
@@ -80,7 +74,6 @@ class KotlinIdiomAnalyzer {
             )
         }
 
-        // Sealed class usage
         if (counts.sealedClasses >= 1) {
             conventions += DetectedConvention(
                 type = ConventionType.KOTLIN_IDIOM,
@@ -90,7 +83,6 @@ class KotlinIdiomAnalyzer {
             )
         }
 
-        // Extension functions
         if (counts.extensionFunctions >= 3) {
             conventions += DetectedConvention(
                 type = ConventionType.KOTLIN_IDIOM,
@@ -100,7 +92,6 @@ class KotlinIdiomAnalyzer {
             )
         }
 
-        // Coroutines
         if (counts.suspendFunctions >= 2) {
             val pct = if (counts.totalFunctions > 0) counts.suspendFunctions * 100 / counts.totalFunctions else 0
             conventions += DetectedConvention(
@@ -111,7 +102,6 @@ class KotlinIdiomAnalyzer {
             )
         }
 
-        // Value classes
         if (counts.valueClasses >= 1) {
             conventions += DetectedConvention(
                 type = ConventionType.KOTLIN_IDIOM,
@@ -121,7 +111,6 @@ class KotlinIdiomAnalyzer {
             )
         }
 
-        // Companion objects
         if (counts.companionObjects >= 3) {
             conventions += DetectedConvention(
                 type = ConventionType.KOTLIN_IDIOM,

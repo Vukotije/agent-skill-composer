@@ -18,10 +18,6 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
 import java.util.concurrent.Callable
 
-/**
- * Detects the project's concurrency model: coroutines, reactive (Mono/Flux), or blocking.
- * This fundamentally changes what code an AI should write.
- */
 class ConcurrencyModelAnalyzer {
 
     fun analyze(project: Project, sourceFiles: List<VirtualFile>): DetectedConvention? =

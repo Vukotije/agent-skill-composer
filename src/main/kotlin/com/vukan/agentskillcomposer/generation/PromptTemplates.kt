@@ -16,8 +16,6 @@ object PromptTemplates {
             append(artifactOverlay(target, artifactType))
         }
 
-    // -- Shared backbone --
-
     private val BACKBONE = """
         You are generating a final, drop-in agent guidance artifact for a Kotlin/Java repository.
         You will receive structured repository analysis data in the user message.
@@ -38,8 +36,6 @@ object PromptTemplates {
         - Produce exactly one artifact.
     """.trimIndent()
 
-    // -- Target overlays --
-
     private fun targetOverlay(target: GenerationTarget): String = when (target) {
         GenerationTarget.JUNIE -> JUNIE_OVERLAY
         GenerationTarget.CLAUDE -> CLAUDE_OVERLAY
@@ -56,8 +52,6 @@ object PromptTemplates {
         Tone: concise project memory and instructions. Claude Code reads this file on every interaction, so brevity matters.
         No YAML frontmatter.
     """.trimIndent()
-
-    // -- Artifact overlays --
 
     private fun artifactOverlay(target: GenerationTarget, artifactType: ArtifactType): String =
         when (artifactType) {

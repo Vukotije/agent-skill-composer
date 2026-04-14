@@ -7,10 +7,6 @@ import com.vukan.agentskillcomposer.model.ConventionType
 import com.vukan.agentskillcomposer.model.DetectedConvention
 import com.vukan.agentskillcomposer.model.DetectedFramework
 
-/**
- * Infers build, test, and run commands from the project structure.
- * Every useful CLAUDE.md / AGENTS.md starts with "how to build and test."
- */
 class BuildCommandAnalyzer {
 
     fun analyze(

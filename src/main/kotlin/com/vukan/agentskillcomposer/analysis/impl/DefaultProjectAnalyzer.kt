@@ -39,7 +39,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
         val projectRoot = Path.of(project.basePath ?: return AnalysisResult.Failure("No project base path"))
 
         try {
-            // Step 1: Detect build system
             progress(indicator, "Detecting build system\u2026", 0.0)
             val buildSystem = runSafe("BuildFileAnalyzer.detectBuildSystem") {
                 ReadAction.nonBlocking(Callable {
@@ -49,7 +48,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 2: Extract dependencies from IDE's resolved model
             progress(indicator, "Reading project dependencies\u2026", 0.10)
             val buildClues = if (buildSystem != null) {
                 runSafe("BuildFileAnalyzer.extractBuildClues") {
@@ -59,7 +57,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 3: Detect languages and source/test roots
             progress(indicator, "Detecting languages\u2026", 0.20)
             val langResult = runSafe("LanguageDetector") {
                 languageDetector.detect(project)
@@ -67,13 +64,11 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 4: Collect file index (centralized — still needed for naming/package analysis)
             progress(indicator, "Indexing project files\u2026", 0.30)
             val (sourceFiles, testFiles) = collectFileIndex(langResult.sourceRoots, langResult.testRoots)
 
             indicator?.checkCanceled()
 
-            // Step 5: Analyze naming conventions (filename-based — correct for this concern)
             progress(indicator, "Analyzing naming conventions\u2026", 0.40)
             val namingConventions = runSafe("NamingConventionAnalyzer") {
                 namingConventionAnalyzer.analyze(sourceFiles, testFiles)
@@ -81,7 +76,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 6: Analyze package structure (directory-based — correct for this concern)
             progress(indicator, "Analyzing package structure\u2026", 0.50)
             val packageConventions = runSafe("PackageStructureAnalyzer") {
                 packageStructureAnalyzer.analyze(langResult.sourceRoots)
@@ -89,7 +83,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 7: Supplement frameworks from IDE facets
             progress(indicator, "Detecting frameworks\u2026", 0.60)
             val buildFrameworks = buildClues?.detectedFrameworks ?: emptyList()
             val facetFrameworks = runSafe("FrameworkDetector") {
@@ -99,7 +92,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 8: Analyze test conventions (PSI-based)
             progress(indicator, "Analyzing test conventions\u2026", 0.65)
             val testConventions = runSafe("TestConventionAnalyzer") {
                 testConventionAnalyzer.analyze(project)
@@ -107,7 +99,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 8b: Analyze DI style (PSI-based)
             progress(indicator, "Analyzing dependency injection style\u2026", 0.70)
             val diConvention = runSafe("DiStyleAnalyzer") {
                 diStyleAnalyzer.analyze(project)
@@ -115,8 +106,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 8c: Deep structural analysis — repository supertypes, controller patterns,
-            // entity relationships, test slices, error handling (PSI type system)
             progress(indicator, "Analyzing code patterns\u2026", 0.72)
             val codePatterns = runSafe("CodePatternAnalyzer") {
                 codePatternAnalyzer.analyze(project)
@@ -124,7 +113,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 8d: Build & run commands
             progress(indicator, "Inferring build commands\u2026", 0.74)
             val buildCommands = runSafe("BuildCommandAnalyzer") {
                 buildCommandAnalyzer.analyze(projectDir, buildClues?.buildSystem ?: buildSystem, allFrameworks)
@@ -132,7 +120,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 8e: Kotlin idioms (data classes, sealed classes, coroutines, extensions)
             progress(indicator, "Analyzing Kotlin idioms\u2026", 0.76)
             val kotlinIdioms = runSafe("KotlinIdiomAnalyzer") {
                 kotlinIdiomAnalyzer.analyze(project, sourceFiles)
@@ -140,7 +127,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 8f: API route structure (actual URL paths from annotations)
             progress(indicator, "Extracting API routes\u2026", 0.78)
             val apiRoutes = runSafe("ApiRouteAnalyzer") {
                 apiRouteAnalyzer.analyze(project)
@@ -148,7 +134,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 8g: Concurrency model (coroutines vs reactive vs blocking)
             progress(indicator, "Analyzing concurrency model\u2026", 0.80)
             val concurrencyModel = runSafe("ConcurrencyModelAnalyzer") {
                 concurrencyModelAnalyzer.analyze(project, sourceFiles)
@@ -156,7 +141,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 8h: Validation patterns (@Valid, constraint annotations)
             progress(indicator, "Analyzing validation patterns\u2026", 0.82)
             val validationConvention = runSafe("ValidationAnalyzer") {
                 validationAnalyzer.analyze(project)
@@ -164,7 +148,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 8i: Module structure (multi-module projects)
             progress(indicator, "Analyzing module structure\u2026", 0.84)
             val moduleStructure = runSafe("ModuleStructureAnalyzer") {
                 moduleStructureAnalyzer.analyze(project)
@@ -172,7 +155,6 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 9: Select representative files (annotation search with filename fallback)
             progress(indicator, "Selecting representative files\u2026", 0.88)
             val allConventions = namingConventions + packageConventions + testConventions +
                 listOfNotNull(diConvention) + codePatterns +
@@ -184,14 +166,12 @@ class DefaultProjectAnalyzer(private val project: Project) : ProjectAnalyzer {
 
             indicator?.checkCanceled()
 
-            // Step 10: Generate skill suggestions
             progress(indicator, "Generating skill suggestions\u2026", 0.90)
             val testFrameworks = buildClues?.detectedTestFrameworks ?: emptyList()
             val suggestedSkills = runSafe("SkillSuggestionEngine") {
                 skillSuggestionEngine.suggest(allFrameworks, testFrameworks, allConventions)
             } ?: emptyList()
 
-            // Step 11: Assemble ProjectFacts
             progress(indicator, "Analysis complete", 1.0)
 
             val facts = ProjectFacts(

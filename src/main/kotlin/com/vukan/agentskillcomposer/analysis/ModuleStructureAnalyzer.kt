@@ -10,10 +10,6 @@ import com.vukan.agentskillcomposer.model.ConventionType
 import com.vukan.agentskillcomposer.model.DetectedConvention
 import java.util.concurrent.Callable
 
-/**
- * Analyzes multi-module project structure: module names, purposes, and inter-dependencies.
- * For multi-module projects, knowing which module holds what is critical for correct code placement.
- */
 class ModuleStructureAnalyzer {
 
     fun analyze(project: Project): DetectedConvention? =
@@ -25,10 +21,8 @@ class ModuleStructureAnalyzer {
         val moduleManager = ModuleManager.getInstance(project)
         val modules = moduleManager.modules
 
-        // Single-module projects don't need module structure documentation
         if (modules.size <= 1) return null
 
-        // Filter out internal IDE modules (like .main and .test companions in Gradle)
         val meaningfulModules = modules.filter { module ->
             val name = module.name
             !name.endsWith(".main") && !name.endsWith(".test") && !name.endsWith(".integrationTest")

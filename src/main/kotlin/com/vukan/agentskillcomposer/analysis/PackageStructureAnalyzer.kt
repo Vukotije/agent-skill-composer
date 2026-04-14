@@ -29,7 +29,6 @@ class PackageStructureAnalyzer {
                 continue
             }
 
-            // Check for hierarchical feature-based layout (e.g., user/service/, order/service/)
             val hierarchicalEvidence = detectHierarchicalFeature(childDirs)
             if (hierarchicalEvidence.isNotEmpty()) {
                 conventions += DetectedConvention(
@@ -41,7 +40,6 @@ class PackageStructureAnalyzer {
                 continue
             }
 
-            // Check for flat feature-based layout (e.g., owner/ has OwnerController + OwnerRepository + Owner entity)
             val flatEvidence = detectFlatFeature(childDirs)
             if (flatEvidence.isNotEmpty()) {
                 conventions += DetectedConvention(
@@ -102,11 +100,8 @@ class PackageStructureAnalyzer {
     }
 
     /**
-     * Detects flat feature-based layout: sibling directories where each contains files
-     * with mixed architectural roles (controller + repository + entity in the same package).
-     *
-     * Example: owner/ has OwnerController.kt, OwnerRepository.kt, Owner.kt
-     * This is the Spring Petclinic / DDD-style "package by feature" pattern.
+     * Flat feature-based layout: sibling directories where each mixes architectural roles
+     * (e.g. owner/ contains OwnerController + OwnerRepository + Owner).
      */
     private fun detectFlatFeature(siblingDirs: List<VirtualFile>): List<String> {
         if (siblingDirs.size < 2) return emptyList()
@@ -121,7 +116,6 @@ class PackageStructureAnalyzer {
                 fileNames.any { it.endsWith(suffix) }
             }
 
-            // A flat feature package has at least 2 different architectural roles
             if (rolesFound >= 2) {
                 val roles = ROLE_SUFFIXES.filter { suffix -> fileNames.any { it.endsWith(suffix) } }
                 featurePackages += "${dir.name} (${roles.joinToString(", ") { "*$it" }})"

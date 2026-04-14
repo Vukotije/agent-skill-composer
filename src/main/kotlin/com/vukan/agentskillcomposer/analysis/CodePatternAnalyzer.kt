@@ -14,11 +14,6 @@ import com.vukan.agentskillcomposer.model.ConventionType
 import com.vukan.agentskillcomposer.model.DetectedConvention
 import java.util.concurrent.Callable
 
-/**
- * Deep structural analysis using the IDE's resolved type system.
- * Extracts patterns that are impossible to get from filename/regex heuristics:
- * repository supertypes, controller method signatures, entity relationships, test slices.
- */
 class CodePatternAnalyzer {
 
     fun analyze(project: Project): List<DetectedConvention> =
@@ -58,7 +53,6 @@ class CodePatternAnalyzer {
 
         if (supertypeEvidence.isEmpty()) return null
 
-        // Find the common base type
         val commonBase = supertypeEvidence
             .map { it.substringAfter("extends ").substringBefore("<") }
             .groupingBy { it }

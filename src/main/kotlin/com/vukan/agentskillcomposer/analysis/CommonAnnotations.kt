@@ -1,10 +1,5 @@
 package com.vukan.agentskillcomposer.analysis
 
-/**
- * Annotation FQNs shared across multiple analyzers.
- * Centralizing them avoids silent drift when one analyzer adds a new annotation
- * but others don't.
- */
 object CommonAnnotations {
 
     val CONTROLLER = listOf(

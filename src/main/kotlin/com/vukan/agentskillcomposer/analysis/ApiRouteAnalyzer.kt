@@ -14,11 +14,6 @@ import com.vukan.agentskillcomposer.model.ConventionType
 import com.vukan.agentskillcomposer.model.DetectedConvention
 import java.util.concurrent.Callable
 
-/**
- * Extracts actual API endpoint URL paths from controller annotations.
- * Not just "uses @GetMapping" but "/owners/{ownerId}/pets/{petId}".
- * This gives the AI the actual API surface map.
- */
 class ApiRouteAnalyzer {
 
     fun analyze(project: Project): DetectedConvention? =
@@ -60,7 +55,6 @@ class ApiRouteAnalyzer {
 
         if (routes.isEmpty()) return null
 
-        // Detect URL patterns
         val pathSegments = routes.map { it.substringAfter(" ") }
         val hasPathVariables = pathSegments.any { it.contains("{") }
         val commonPrefix = findCommonPrefix(pathSegments)
@@ -84,7 +78,6 @@ class ApiRouteAnalyzer {
     private fun extractPath(annotation: PsiAnnotation?): String? {
         if (annotation == null) return null
 
-        // Try "value" attribute first, then "path"
         val value = annotation.findAttributeValue("value")
             ?: annotation.findAttributeValue("path")
             ?: annotation.findAttributeValue(null) // default attribute

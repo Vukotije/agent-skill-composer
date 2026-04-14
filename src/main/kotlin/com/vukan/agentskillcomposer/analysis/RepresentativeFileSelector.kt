@@ -33,10 +33,6 @@ class RepresentativeFileSelector {
         }.take(MAX_FILES)
     }).inSmartMode(project).executeSynchronously()
 
-    /**
-     * Primary strategy: find a class annotated with one of the role's annotations.
-     * Tries annotations in priority order.
-     */
     private fun findByAnnotation(role: FileRole, facade: JavaPsiFacade, scope: GlobalSearchScope): VirtualFile? {
         for (fqn in role.annotationFqns) {
             val annotationClass = facade.findClass(fqn, scope) ?: continue
@@ -50,9 +46,6 @@ class RepresentativeFileSelector {
         return null
     }
 
-    /**
-     * For test roles: find a class containing @Test-annotated methods.
-     */
     private fun findTestByAnnotation(role: FileRole, facade: JavaPsiFacade, scope: GlobalSearchScope): VirtualFile? {
         if (!role.isTestRole) return null
 
@@ -70,9 +63,6 @@ class RepresentativeFileSelector {
         return null
     }
 
-    /**
-     * Fallback strategy: match by filename suffix pattern.
-     */
     private fun findByName(role: FileRole, allFiles: List<VirtualFile>): VirtualFile? =
         allFiles.firstOrNull { role.namePattern.matches(it.nameWithoutExtension) }
 

@@ -11,10 +11,6 @@ import com.vukan.agentskillcomposer.model.ConventionType
 import com.vukan.agentskillcomposer.model.DetectedConvention
 import java.util.concurrent.Callable
 
-/**
- * Detects where and how validation happens in the project.
- * @Valid on controller parameters, constraint annotations on fields.
- */
 class ValidationAnalyzer {
 
     fun analyze(project: Project): DetectedConvention? =
@@ -27,13 +23,11 @@ class ValidationAnalyzer {
     private fun detectValidation(facade: JavaPsiFacade, scope: GlobalSearchScope): DetectedConvention? {
         val evidence = mutableListOf<String>()
 
-        // Count @Valid usage on method parameters (controller-level validation)
         val validParamCount = countValidAnnotatedParams(facade, scope)
         if (validParamCount > 0) {
             evidence += "@Valid on $validParamCount method parameters (controller-level validation)"
         }
 
-        // Count constraint annotations on fields
         val constraintCounts = mutableMapOf<String, Int>()
         for ((fqn, label) in CONSTRAINT_ANNOTATIONS) {
             val annotation = facade.findClass(fqn, scope) ?: continue
