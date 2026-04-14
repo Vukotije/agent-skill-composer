@@ -9,6 +9,12 @@ build
 
 ### Claude Code ###
 .claude/
+CLAUDE.md
+
+### Internal working notes (kept locally, not in repo) ###
+docs/milestone-plan.md
+docs/implementation-plan.md
+docs/development-workflow.md
 
 ### Windows ###
-*:Zone.Identifier
+*Zone.Identifier
