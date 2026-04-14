@@ -24,8 +24,9 @@ Implemented classes (in `ui/`):
 - `AgentSkillToolWindowFactory` — registered in plugin.xml
 - `AgentSkillToolWindowPanel` — orchestrator; hosts the Analyze button, analysis summary, generation form, and status panel; owns a gear toolbar action for the settings dialog
 - `AnalysisSummaryPanel` — renders `ProjectFacts`
-- `GenerationFormPanel` — target combo, artifact-type checkboxes with inline resolved paths, optional instructions, Generate button, plus embedded progress bar / per-artifact status list / final summary. `setGenerating(Boolean)` freezes the whole form during a run and shows a spinner on the button. Progress APIs: `showProgress(total)`, `updateProgress(completed, total, result)`, `showDone(artifacts)`.
-- `EditorPreviewHelper` — opens each generated artifact as a read-only `LightVirtualFile` in an editor tab. Chosen over a dedicated preview panel because editor tabs give users syntax highlighting, search, and a familiar UX. The save path (M5) will write these files to disk.
+- `GenerationFormPanel` — target combo, artifact-type checkboxes with inline resolved paths, optional instructions, Generate button, plus embedded progress bar / per-artifact status list / final summary. `setGenerating(Boolean)` freezes the whole form during a run and shows a spinner on the button. Progress APIs: `showProgress(total)`, `updateProgress(completed, total, result)`, `showDone(artifacts)`. Holds a hidden "Save All" button revealed by `showDone` when generation yielded artifacts; `setSaving(Boolean)` freezes it during writes. Retains the last generated list so the button can emit it via `onSaveAll`.
+- `EditorPreviewHelper` — opens each generated artifact as a read-only `LightVirtualFile` in an editor tab. Chosen over a dedicated preview panel because editor tabs give users syntax highlighting, search, and a familiar UX. Preview stays read-only; the Save All button is the write path.
+- Save orchestration (in `AgentSkillToolWindowPanel.onSaveAll`): resolves metadata per artifact → renders via `DefaultArtifactRenderer` → pre-checks existence with NIO `Files.exists` → if any conflicts, shows one `Messages.showYesNoDialog` listing all of them (Cancel drops the entire batch) → iterates `DefaultArtifactWriter.save` → aggregates `List<SaveResult>` → emits one info balloon with `created`/`overwritten` counts and a "Reveal in Project" action anchored on the first saved file, plus an error balloon per failed path.
 
 ### Analysis layer
 Responsible for deterministic repository inspection using IntelliJ SDK APIs (PSI, resolved dependency model, facets, Kotlin PSI).
@@ -79,7 +80,7 @@ Implemented classes (in `generation/`):
 - `impl/OpenAiCompatibleProvider` — `POST /chat/completions`, `GET /models`. Covers native OpenAI and any OpenAI-compatible endpoint (Ollama, Azure, local).
 - `impl/AnthropicProvider` — `POST /v1/messages`, `GET /v1/models`, `anthropic-version: 2023-06-01`, `max_tokens: 8192`
 - `impl/GeminiProvider` — `POST /v1beta/models/{model}:generateContent`, `GET /v1beta/models` filtered to entries whose `supportedGenerationMethods` contain `generateContent`
-- `impl/DefaultPromptFactory` — serializes ProjectFacts into structured prompt sections
+- `impl/DefaultPromptFactory` — serializes ProjectFacts into structured prompt sections; takes `TargetPathResolver` by constructor so the prompt's "File intention" line is resolved by the same authority that owns the write path (single source of truth)
 - `impl/DefaultArtifactGenerator` — orchestrates PromptFactory → AiProvider → GeneratedArtifact. Rethrows `CancellationException`, wraps everything else in `GenerationResult.Failure`.
 
 Settings (in `settings/`):
@@ -101,11 +102,11 @@ Implemented classes (in `output/`):
 - `DefaultTargetPathResolver` — exhaustive target+artifactType→path mapping with `require(applicableTo)` guard
 - `ArtifactMetadata` — data class: fileName, relativePath, requiresFrontmatter, frontmatterTemplate
 - `ArtifactMetadataResolver` — wraps `TargetPathResolver`, adds Junie skill frontmatter rules
-
-Planned classes (M5):
-- `ArtifactRenderer`
-- `ArtifactWriter`
-- `SaveResult`
+- `SaveResult` — `sealed class` with `Saved(path, status)` / `Failed(path, message, cause)`; `SaveStatus { CREATED, OVERWRITTEN }`
+- `ArtifactRenderer` — interface: `render(artifact, metadata): String`
+- `impl/DefaultArtifactRenderer` — prepends YAML frontmatter when `metadata.requiresFrontmatter`; guarantees single trailing newline
+- `ArtifactWriter` — interface: `save(projectRoot, metadata, content): SaveResult`
+- `impl/DefaultArtifactWriter` — `WriteAction.computeAndWait` + `VfsUtil.createDirectoryIfMissing` + `VirtualFile.setBinaryContent` / `createChildData`. Returns `Saved(path, CREATED)` when the file didn't exist pre-write, `Saved(path, OVERWRITTEN)` when it did. Never prompts — the overwrite confirmation lives in the UI orchestrator so `output/` stays pure.
 
 ## Domain model
 
