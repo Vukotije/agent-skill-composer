@@ -41,6 +41,15 @@ intellijPlatform {
 }
 
 tasks {
+    // Disabled for dev — re-enable before packaging a release build.
+    buildSearchableOptions {
+        enabled = false
+    }
+
+    runIde {
+        jvmArgs("-Xmx1536m")
+    }
+
     // Set the JVM compatibility versions
     withType<JavaCompile> {
         sourceCompatibility = "21"
