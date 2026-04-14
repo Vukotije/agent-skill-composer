@@ -1,11 +1,38 @@
 <idea-plugin>
-    <id>com.vukan.agentskillcomposer.agent-skill-composer</id>
+    <id>com.vukan.agentskillcomposer</id>
     <name>Agent Skill Composer</name>
     <vendor url="https://github.com/Vukotije">Vukan</vendor>
 
     <description><![CDATA[
-        Analyzes Kotlin/Java project conventions and generates AI-backed agent guidance
-        artifacts for Junie and Claude Code.
+        <p>Agent Skill Composer analyzes your Kotlin/Java project with native IDE APIs, then uses an
+        AI provider of your choice to generate grounded agent-guidance artifacts for
+        <b>JetBrains Junie</b> and <b>Claude Code</b>.</p>
+
+        <p>Unlike generic prompts, every artifact is anchored in real repository evidence:
+        resolved dependencies (via <code>OrderEnumerator</code>), PSI-based convention detection,
+        Kotlin/Java idiom analysis, API routes extracted from annotations, and representative
+        code examples.</p>
+
+        <h3>Features</h3>
+        <ul>
+            <li>Detects build system, frameworks, test frameworks, naming conventions, package
+            structure, DI style, API routes, Kotlin idioms, concurrency model, validation, and
+            multi-module layout.</li>
+            <li>Generates for <b>Junie</b> (<code>.junie/AGENTS.md</code>,
+            <code>.junie/skills/&lt;id&gt;/SKILL.md</code>) and <b>Claude Code</b>
+            (<code>CLAUDE.md</code>, <code>.claude/skills/&lt;id&gt;/SKILL.md</code>,
+            <code>.claude/commands/review-changes.md</code>).</li>
+            <li>Supports <b>Anthropic</b>, <b>OpenAI</b>, <b>Google Gemini</b>, and any
+            OpenAI-compatible endpoint (Ollama, Azure, local models).</li>
+            <li>API key stored securely via <code>PasswordSafe</code>; live model discovery —
+            no hardcoded model IDs to go stale.</li>
+            <li>Preview artifacts as read-only editor tabs; single <b>Save All</b> action with
+            overwrite confirmation.</li>
+        </ul>
+
+        <h3>Who it's for</h3>
+        <p>Kotlin/Java teams adopting Junie or Claude Code who want project-specific agent
+        instructions that reflect their actual conventions — not copy-pasted boilerplate.</p>
     ]]></description>
 
     <depends>com.intellij.java</depends>
