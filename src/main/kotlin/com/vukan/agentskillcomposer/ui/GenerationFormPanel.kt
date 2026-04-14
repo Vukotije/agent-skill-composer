@@ -37,6 +37,7 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
 
     private var currentSkills: List<SkillSuggestion> = emptyList()
     private var generateButton: JButton? = null
+    private var saveAllButton: JButton? = null
     private val spinnerIcon = AnimatedIcon.Default()
 
     private val progressBar = JProgressBar().apply { isVisible = false }
@@ -46,8 +47,11 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
         isVisible = false
     }
 
+    private var lastGenerated: List<GeneratedArtifact> = emptyList()
+
     var pathResolver: PathResolverFn? = null
     var onGenerate: ((GenerationTarget, List<ArtifactType>, String?) -> Unit)? = null
+    var onSaveAll: ((List<GeneratedArtifact>) -> Unit)? = null
 
     init {
         isVisible = false
@@ -77,8 +81,13 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
                 }
                 row {
                     button(MyMessageBundle.message("action.generate")) { fireGenerate() }
-                        .align(AlignX.LEFT)
                         .applyToComponent { generateButton = this }
+                    button(MyMessageBundle.message("action.saveAll")) { fireSaveAll() }
+                        .align(AlignX.RIGHT)
+                        .applyToComponent {
+                            saveAllButton = this
+                            isVisible = false
+                        }
                 }
                 row {
                     cell(progressBar).align(AlignX.FILL)
@@ -121,6 +130,20 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
         if (generating) {
             resultContainer.removeAll()
             resultContainer.isVisible = false
+            lastGenerated = emptyList()
+            saveAllButton?.isVisible = false
+        }
+    }
+
+    fun setSaving(saving: Boolean) {
+        saveAllButton?.apply {
+            isEnabled = !saving
+            icon = if (saving) spinnerIcon else null
+            text = if (saving) {
+                MyMessageBundle.message("action.saving")
+            } else {
+                MyMessageBundle.message("action.saveAll")
+            }
         }
     }
 
@@ -167,10 +190,13 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
 
     fun showDone(artifacts: List<GeneratedArtifact>) {
         progressBar.isVisible = false
+        lastGenerated = artifacts
         if (artifacts.isNotEmpty()) {
             progressLabel.text = MyMessageBundle.message("status.artifactsOpenedInEditor")
+            saveAllButton?.isVisible = true
         } else {
             progressLabel.text = MyMessageBundle.message("status.allFailed")
+            saveAllButton?.isVisible = false
         }
         revalidate()
         repaint()
@@ -181,6 +207,13 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
         progressLabel.isVisible = false
         resultContainer.removeAll()
         resultContainer.isVisible = false
+        lastGenerated = emptyList()
+        saveAllButton?.isVisible = false
+    }
+
+    private fun fireSaveAll() {
+        if (lastGenerated.isEmpty()) return
+        onSaveAll?.invoke(lastGenerated)
     }
 
     private fun refreshArtifactCheckBoxes() {
