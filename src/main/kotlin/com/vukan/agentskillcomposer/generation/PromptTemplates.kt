@@ -75,6 +75,7 @@ object PromptTemplates {
         - Include practical agent rules ("when writing code" sections).
         - Do not include long explanations or onboarding prose.
         - Focus on information that helps an agent act correctly in this repository.
+        - If a section has no evidence, omit the section entirely — do not write "N/A" or "none detected".
     """.trimIndent()
 
     private val SKILL_OVERLAY = """
@@ -85,6 +86,7 @@ object PromptTemplates {
         - Include at least one concrete code example drawn from representative files.
         - Include a validation checklist the agent can verify against.
         - Keep the skill tightly scoped to one task.
+        - The filename and path for this skill are fixed by the system — do not restate them in the content.
     """.trimIndent()
 
     private val REVIEW_COMMAND_OVERLAY = """
