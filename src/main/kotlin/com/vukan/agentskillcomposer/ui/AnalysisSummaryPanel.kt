@@ -61,6 +61,8 @@ class AnalysisSummaryPanel : JPanel(BorderLayout()) {
                         }
                     }
                 }
+            } else if (facts.frameworks.isEmpty() && facts.representativeFiles.isEmpty()) {
+                row { comment(MyMessageBundle.message("summary.emptyAnalysis")) }
             }
 
             if (facts.representativeFiles.isNotEmpty()) {
