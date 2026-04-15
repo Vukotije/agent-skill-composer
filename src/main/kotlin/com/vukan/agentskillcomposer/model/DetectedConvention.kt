@@ -7,9 +7,4 @@ data class DetectedConvention(
     val summary: String,
     val confidence: ConventionConfidence,
     val evidence: Evidence,
-) {
-    fun toDisplayString(): String = buildString {
-        append("[${confidence.displayName}] ")
-        append(summary)
-    }
-}
+)
