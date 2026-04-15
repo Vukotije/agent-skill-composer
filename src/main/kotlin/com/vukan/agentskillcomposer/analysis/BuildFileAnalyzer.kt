@@ -9,6 +9,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.vukan.agentskillcomposer.model.BuildSystem
 import com.vukan.agentskillcomposer.model.DetectedFramework
 import com.vukan.agentskillcomposer.model.TestFramework
+import org.jetbrains.annotations.VisibleForTesting
 import java.util.concurrent.Callable
 
 class BuildFileAnalyzer {
@@ -52,7 +53,8 @@ class BuildFileAnalyzer {
         return result
     }
 
-    private fun parseCoordinate(libraryName: String): LibCoord? {
+    @VisibleForTesting
+    internal fun parseCoordinate(libraryName: String): LibCoord? {
         // Library names may have prefixes: "Gradle: group:artifact:version"
         // or "Maven: group:artifact:version" or just "group:artifact:version"
         // May also have a classifier: "group:artifact:version:classifier"
@@ -71,7 +73,8 @@ class BuildFileAnalyzer {
         )
     }
 
-    private fun detectFrameworks(coords: List<LibCoord>): List<DetectedFramework> {
+    @VisibleForTesting
+    internal fun detectFrameworks(coords: List<LibCoord>): List<DetectedFramework> {
         val frameworks = mutableListOf<DetectedFramework>()
 
         val springBootCoord = coords.firstOrNull { it.group == "org.springframework.boot" && it.artifact.startsWith("spring-boot-starter") }
@@ -87,7 +90,8 @@ class BuildFileAnalyzer {
         return frameworks.distinctBy { it.name }
     }
 
-    private fun detectTestFrameworks(coords: List<LibCoord>): List<TestFramework> = buildList {
+    @VisibleForTesting
+    internal fun detectTestFrameworks(coords: List<LibCoord>): List<TestFramework> = buildList {
         if (coords.any { it.group == "org.junit.jupiter" || it.artifact.contains("junit-jupiter") }) {
             add(TestFramework.JUNIT5)
         }
@@ -102,7 +106,8 @@ class BuildFileAnalyzer {
         }
     }
 
-    private data class LibCoord(
+    @VisibleForTesting
+    internal data class LibCoord(
         val group: String,
         val artifact: String,
         val version: String?,
