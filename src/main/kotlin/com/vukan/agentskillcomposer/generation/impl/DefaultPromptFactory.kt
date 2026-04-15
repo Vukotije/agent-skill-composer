@@ -179,6 +179,9 @@ class DefaultPromptFactory(
         appendLine("$label: $value")
     }
 
+    // Path.iterator() returns name elements only — dropping the root component would
+    // produce "tmp/x" for "/tmp/x" on POSIX or "Users/foo" for "C:\Users\foo" on Windows.
+    // Use toString() to preserve the root, then normalize the separator for display.
     private fun Path.pathString(): String = toString().replace('\\', '/')
 
     companion object {
