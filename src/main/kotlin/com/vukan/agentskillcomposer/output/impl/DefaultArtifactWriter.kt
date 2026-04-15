@@ -18,14 +18,20 @@ class DefaultArtifactWriter : ArtifactWriter {
         metadata: ArtifactMetadata,
         content: String,
     ): SaveResult {
-        val absolutePath = projectRoot.resolve(metadata.relativePath)
+        val normalizedRoot = projectRoot.toAbsolutePath().normalize()
+        val absolutePath = normalizedRoot.resolve(metadata.relativePath).normalize()
+        // Defense in depth: today's TargetPathResolver hardcodes safe paths, but a future
+        // change (or an attacker-controlled metadata source) must not escape project root.
+        require(absolutePath.startsWith(normalizedRoot)) {
+            "Resolved path escapes project root: $absolutePath"
+        }
         return try {
             WriteAction.computeAndWait<SaveResult, IOException> {
-                val rootVf = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(projectRoot)
-                    ?: throw IOException("Project root not found in VFS: $projectRoot")
+                val rootVf = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(normalizedRoot)
+                    ?: throw IOException("Project root not found in VFS: $normalizedRoot")
 
                 val relativePath = Path.of(metadata.relativePath)
-                val parentRelative = relativePath.parent?.toString()?.replace('\\', '/')
+                val parentRelative = relativePath.parent?.joinToString("/") { it.toString() }
                 val parentDir = if (parentRelative.isNullOrEmpty()) {
                     rootVf
                 } else {
