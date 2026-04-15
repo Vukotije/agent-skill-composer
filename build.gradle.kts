@@ -18,7 +18,6 @@ repositories {
 dependencies {
     intellijPlatform {
         intellijIdea("2026.1")
-        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
 
         // Add plugin dependencies for compilation here:
 
