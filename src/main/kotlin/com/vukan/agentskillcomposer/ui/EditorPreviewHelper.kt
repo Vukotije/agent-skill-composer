@@ -3,6 +3,9 @@ package com.vukan.agentskillcomposer.ui
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+// LightVirtualFile lives in the `testFramework` package but ships in `core-impl.jar` as part of
+// the main IntelliJ Platform runtime — it is safe to use in production code. Documented decision;
+// see docs/architecture.md "Test strategy" section for context.
 import com.intellij.testFramework.LightVirtualFile
 import com.vukan.agentskillcomposer.MyMessageBundle
 import com.vukan.agentskillcomposer.model.GeneratedArtifact
