@@ -21,8 +21,8 @@ Main responsibilities:
 - display errors and progress
 
 Implemented classes (in `ui/`):
-- `AgentSkillToolWindowFactory` — registered in plugin.xml
-- `AgentSkillToolWindowPanel` — orchestrator; hosts the Analyze button, analysis summary, generation form, and status panel; owns a gear toolbar action for the settings dialog
+- `AgentSkillToolWindowFactory` — registered in plugin.xml; registers the panel as the content disposer so the panel's coroutine scope is cancelled when the tool-window content is released
+- `AgentSkillToolWindowPanel` — orchestrator; hosts the Analyze button, analysis summary, generation form, and status panel; owns a gear toolbar action for the settings dialog. Implements `Disposable` and owns a `CoroutineScope(SupervisorJob())` cancelled in `dispose()` so in-flight generation cannot fire callbacks into a disposed Swing tree.
 - `AnalysisSummaryPanel` — renders `ProjectFacts`
 - `GenerationFormPanel` — target combo, artifact-type checkboxes with inline resolved paths, optional instructions, Generate button, plus embedded progress bar / per-artifact status list / final summary. `setGenerating(Boolean)` freezes the whole form during a run and shows a spinner on the button. Progress APIs: `showProgress(total)`, `updateProgress(completed, total, result)`, `showDone(artifacts)`. Holds a hidden "Save All" button revealed by `showDone` when generation yielded artifacts; `setSaving(Boolean)` freezes it during writes. Retains the last generated list so the button can emit it via `onSaveAll`.
 - `EditorPreviewHelper` — opens each generated artifact as a read-only `LightVirtualFile` in an editor tab. Chosen over a dedicated preview panel because editor tabs give users syntax highlighting, search, and a familiar UX. Preview stays read-only; the Save All button is the write path.
@@ -106,7 +106,7 @@ Implemented classes (in `output/`):
 - `ArtifactRenderer` — interface: `render(artifact, metadata): String`
 - `impl/DefaultArtifactRenderer` — prepends YAML frontmatter when `metadata.requiresFrontmatter`; guarantees single trailing newline
 - `ArtifactWriter` — interface: `save(projectRoot, metadata, content): SaveResult`
-- `impl/DefaultArtifactWriter` — `WriteAction.computeAndWait` + `VfsUtil.createDirectoryIfMissing` + `VirtualFile.setBinaryContent` / `createChildData`. Returns `Saved(path, CREATED)` when the file didn't exist pre-write, `Saved(path, OVERWRITTEN)` when it did. Never prompts — the overwrite confirmation lives in the UI orchestrator so `output/` stays pure.
+- `impl/DefaultArtifactWriter` — `WriteAction.computeAndWait` + `VfsUtil.createDirectoryIfMissing` + `VirtualFile.setBinaryContent` / `createChildData`. Returns `Saved(path, CREATED)` when the file didn't exist pre-write, `Saved(path, OVERWRITTEN)` when it did. Never prompts — the overwrite confirmation lives in the UI orchestrator so `output/` stays pure. Defense-in-depth: normalizes the resolved absolute path and asserts it still starts with the (normalized) project root before writing, so a future change to `TargetPathResolver` cannot traverse out of the project.
 
 ## Domain model
 
@@ -194,15 +194,23 @@ Show user-facing errors for:
 
 ## Test strategy
 
-Focus on lightweight tests first.
+JUnit 5 on JUnit Platform (`useJUnitPlatform()`, `maxHeapSize = "512m"`). Pure unit tests only — no `BasePlatformTestCase`, no live `Project`. Platform-coupled code is covered by manual `runIde` walkthroughs, not automated tests, because the setup cost does not pay off for an MVP.
 
-Good candidates:
-- target path resolution
-- prompt assembly from facts
-- artifact filename generation
-- convention extraction heuristics for small fixtures
+The `testFramework(TestFrameworkType.Platform)` dependency is intentionally NOT declared — it ships a `ServiceLoader`-registered `JUnit5TestSessionListener` that expects a booted `TestApplicationManager` at JUnit startup and crashes pure unit tests with "could not be instantiated". `LightVirtualFile` stays available via `core-impl.jar` from `intellijIdea(...)`. If someone later needs `BasePlatformTestCase`-style tests, they should live in a separate source set so the listener only loads for tests that actually boot the platform.
 
-Keep UI tests minimal in MVP.
+Covered today:
+- `output/DefaultTargetPathResolverTest` — target → path mapping, `require` guards
+- `output/ArtifactMetadataResolverTest` — frontmatter rules, YAML escaping
+- `model/ArtifactTypeTest` — `applicableTo` matrix, `forTarget` ordering
+- `generation/DefaultPromptFactoryTest` — prompt section assembly, LOW-confidence filter, evidence cap, empty-section omission
+- `generation/PromptTemplatesTest` — backbone + target/artifact overlays; invalid combo throws
+- `analysis/NamingConventionAnalyzerTest` — via `LightVirtualFile`; confidence thresholds, evidence cap, per-pattern coverage
+- `analysis/BuildFileAnalyzerTest` — `parseCoordinate` / `detectFrameworks` / `detectTestFrameworks` via `@VisibleForTesting internal` helpers
+
+Intentionally uncovered (recorded so future work knows why):
+- `DefaultProjectAnalyzer` orchestrator and PSI analyzers — require a `Project`; covered by manual runIde
+- `BuildFileAnalyzer.detectBuildSystem` / `collectLibraryCoordinates` — trivial IDE-API wrappers
+- UI panels (Swing / Kotlin UI DSL) — covered manually in sandbox IDE
 
 ## Future extension points
 
