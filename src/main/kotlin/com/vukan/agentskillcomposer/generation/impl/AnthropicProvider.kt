@@ -39,11 +39,12 @@ class AnthropicProvider(
 
     override fun extractContent(json: JsonObject): String {
         val content = json.getAsJsonArray("content")
-            ?: throw IllegalStateException("Anthropic returned no content")
+            ?: throw IllegalStateException("Anthropic returned no content array")
         check(content.size() > 0) { "Anthropic returned empty content array" }
-        return content[0].asJsonObject
-            .get("text")
-            .asString
+        val firstBlock = content[0]?.takeIf { it.isJsonObject }?.asJsonObject
+            ?: throw IllegalStateException("Anthropic returned malformed content block")
+        return firstBlock.get("text")?.takeIf { !it.isJsonNull }?.asString
+            ?: throw IllegalStateException("Anthropic returned no text in content block")
     }
 
     override fun buildListModelsRequest(): HttpRequest =
