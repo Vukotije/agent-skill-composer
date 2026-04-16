@@ -12,7 +12,7 @@ import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
 import com.vukan.agentskillcomposer.MyMessageBundle
 import com.vukan.agentskillcomposer.generation.AiProviderFactory
-import com.vukan.agentskillcomposer.generation.impl.HttpAiProvider
+import kotlinx.coroutines.runBlocking
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComponent
