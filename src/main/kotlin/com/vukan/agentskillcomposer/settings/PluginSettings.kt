@@ -7,6 +7,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
+import com.intellij.openapi.diagnostic.thisLogger
 
 @State(
     name = "AgentSkillComposerSettings",
@@ -31,7 +32,11 @@ class PluginSettings : PersistentStateComponent<PluginSettings.State> {
     val providerType: ProviderType
         get() = try {
             ProviderType.valueOf(state.providerType)
-        } catch (_: IllegalArgumentException) {
+        } catch (e: IllegalArgumentException) {
+            thisLogger().warn(
+                "Unknown providerType '${state.providerType}' in persisted state (renamed or removed enum?); falling back to ANTHROPIC",
+                e,
+            )
             ProviderType.ANTHROPIC
         }
 
