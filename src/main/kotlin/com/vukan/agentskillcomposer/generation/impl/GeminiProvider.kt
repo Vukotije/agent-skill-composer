@@ -33,8 +33,9 @@ class GeminiProvider(
             })
         }
         return HttpRequest.newBuilder()
-            .uri(URI.create("${baseUrl.trimEnd('/')}/v1beta/models/$modelName:generateContent?key=$apiKey"))
+            .uri(URI.create("${baseUrl.trimEnd('/')}/v1beta/models/$modelName:generateContent"))
             .header("Content-Type", "application/json")
+            .header("x-goog-api-key", apiKey)
             .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
             .timeout(requestTimeout())
             .build()
@@ -44,17 +45,23 @@ class GeminiProvider(
         val candidates = json.getAsJsonArray("candidates")
             ?: throw IllegalStateException("Gemini returned no candidates")
         check(candidates.size() > 0) { "Gemini returned empty candidates array" }
-        return candidates[0].asJsonObject
-            .getAsJsonObject("content")
-            .getAsJsonArray("parts")
-            .get(0).asJsonObject
-            .get("text")
-            .asString
+        val firstCandidate = candidates[0]?.takeIf { it.isJsonObject }?.asJsonObject
+            ?: throw IllegalStateException("Gemini returned malformed candidate")
+        val content = firstCandidate.getAsJsonObject("content")
+            ?: throw IllegalStateException("Gemini returned no content on candidate")
+        val parts = content.getAsJsonArray("parts")
+            ?: throw IllegalStateException("Gemini returned no parts on content")
+        check(parts.size() > 0) { "Gemini returned empty parts array" }
+        val firstPart = parts[0]?.takeIf { it.isJsonObject }?.asJsonObject
+            ?: throw IllegalStateException("Gemini returned malformed part")
+        return firstPart.get("text")?.takeIf { !it.isJsonNull }?.asString
+            ?: throw IllegalStateException("Gemini returned no text on part")
     }
 
     override fun buildListModelsRequest(): HttpRequest =
         HttpRequest.newBuilder()
-            .uri(URI.create("${baseUrl.trimEnd('/')}/v1beta/models?key=$apiKey"))
+            .uri(URI.create("${baseUrl.trimEnd('/')}/v1beta/models"))
+            .header("x-goog-api-key", apiKey)
             .GET()
             .timeout(listModelsTimeout())
             .build()
