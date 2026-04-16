@@ -28,6 +28,6 @@ object AiProviderFactory {
         ProviderType.ANTHROPIC -> AnthropicProvider(apiKey, baseUrl, modelName)
         ProviderType.GEMINI -> GeminiProvider(apiKey, baseUrl, modelName)
         ProviderType.OPENAI, ProviderType.OPENAI_COMPATIBLE ->
-            OpenAiCompatibleProvider(apiKey, baseUrl, modelName)
+            OpenAiCompatibleProvider(apiKey, baseUrl, modelName, providerType.displayName)
     }
 }

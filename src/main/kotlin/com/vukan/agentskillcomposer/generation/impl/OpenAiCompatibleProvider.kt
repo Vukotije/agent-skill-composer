@@ -9,9 +9,10 @@ class OpenAiCompatibleProvider(
     apiKey: String,
     baseUrl: String,
     modelName: String,
+    private val displayName: String,
 ) : HttpAiProvider(apiKey, baseUrl, modelName) {
 
-    override fun providerName(): String = "OpenAI"
+    override fun providerName(): String = displayName
 
     override fun buildGenerateRequest(systemPrompt: String, userPrompt: String): HttpRequest {
         val messages = JsonArray().apply {
@@ -34,12 +35,14 @@ class OpenAiCompatibleProvider(
 
     override fun extractContent(json: JsonObject): String {
         val choices = json.getAsJsonArray("choices")
-            ?: throw IllegalStateException("OpenAI returned no choices")
-        check(choices.size() > 0) { "OpenAI returned empty choices array" }
-        return choices[0].asJsonObject
-            .getAsJsonObject("message")
-            .get("content")
-            .asString
+            ?: throw IllegalStateException("${providerName()} returned no choices")
+        check(choices.size() > 0) { "${providerName()} returned empty choices array" }
+        val firstChoice = choices[0]?.takeIf { it.isJsonObject }?.asJsonObject
+            ?: throw IllegalStateException("${providerName()} returned malformed choice")
+        val message = firstChoice.getAsJsonObject("message")
+            ?: throw IllegalStateException("${providerName()} returned no message on choice")
+        return message.get("content")?.takeIf { !it.isJsonNull }?.asString
+            ?: throw IllegalStateException("${providerName()} returned no content on message")
     }
 
     override fun buildListModelsRequest(): HttpRequest =
