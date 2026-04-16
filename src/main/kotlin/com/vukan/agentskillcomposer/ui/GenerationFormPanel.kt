@@ -23,6 +23,9 @@ import javax.swing.JComboBox
 import javax.swing.JPanel
 import javax.swing.JProgressBar
 
+typealias OnGenerateFn = (GenerationTarget, List<ArtifactType>, String?) -> Unit
+typealias OnSaveAllFn = (List<GeneratedArtifact>) -> Unit
+
 class GenerationFormPanel : JPanel(BorderLayout()) {
 
     private val targetCombo = JComboBox(GenerationTarget.entries.toTypedArray())
@@ -50,8 +53,8 @@ class GenerationFormPanel : JPanel(BorderLayout()) {
     private var lastGenerated: List<GeneratedArtifact> = emptyList()
 
     var pathResolver: PathResolverFn? = null
-    var onGenerate: ((GenerationTarget, List<ArtifactType>, String?) -> Unit)? = null
-    var onSaveAll: ((List<GeneratedArtifact>) -> Unit)? = null
+    var onGenerate: OnGenerateFn? = null
+    var onSaveAll: OnSaveAllFn? = null
 
     init {
         isVisible = false

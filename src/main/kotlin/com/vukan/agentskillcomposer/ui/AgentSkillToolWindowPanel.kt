@@ -8,10 +8,10 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
-import com.intellij.openapi.components.ComponentManagerEx
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.ui.components.JBScrollPane
@@ -48,7 +48,10 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.AnimatedIcon
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.nio.file.Files
@@ -59,7 +62,7 @@ import javax.swing.JPanel
 
 class AgentSkillToolWindowPanel(
     private val project: Project,
-) : SimpleToolWindowPanel(true, true) {
+) : SimpleToolWindowPanel(true, true), Disposable {
 
     private val pathResolver: TargetPathResolver = DefaultTargetPathResolver()
     private val metadataResolver = ArtifactMetadataResolver(pathResolver)
@@ -68,11 +71,18 @@ class AgentSkillToolWindowPanel(
     private val analysisSummaryPanel = AnalysisSummaryPanel()
     private val generationFormPanel = GenerationFormPanel()
 
+    // Panel-scoped coroutine scope — cancelled in dispose() so in-flight generation
+    // doesn't touch disposed Swing state after the tool window content is released.
+    private val scope = CoroutineScope(SupervisorJob())
+
     private var currentFacts: ProjectFacts? = null
-    private var generatedArtifacts: List<GeneratedArtifact> = emptyList()
     private var previewFiles: List<VirtualFile> = emptyList()
     private var analyzeButton: JButton? = null
     private val spinnerIcon = AnimatedIcon.Default()
+
+    override fun dispose() {
+        scope.cancel()
+    }
 
     init {
         toolbar = createToolbar().component
@@ -146,7 +156,7 @@ class AgentSkillToolWindowPanel(
         generationFormPanel.setGenerating(true)
         generationFormPanel.showProgress(artifactTypes.size)
 
-        (project as ComponentManagerEx).getCoroutineScope().launch {
+        scope.launch {
             val provider = try {
                 AiProviderFactory.create(settings)
             } catch (e: Exception) {
@@ -187,11 +197,11 @@ class AgentSkillToolWindowPanel(
                 EditorPreviewHelper.closePreviews(project, previewFiles)
                 previewFiles = emptyList()
 
-                generatedArtifacts = successes.map { it.artifact }
-                generationFormPanel.showDone(generatedArtifacts)
+                val artifacts = successes.map { it.artifact }
+                generationFormPanel.showDone(artifacts)
 
-                if (generatedArtifacts.isNotEmpty()) {
-                    previewFiles = EditorPreviewHelper.openAllInEditor(project, generatedArtifacts)
+                if (artifacts.isNotEmpty()) {
+                    previewFiles = EditorPreviewHelper.openAllInEditor(project, artifacts)
                 }
                 failures.forEach { showErrorNotification(it.message) }
                 generationFormPanel.setGenerating(false)
@@ -349,7 +359,6 @@ class AgentSkillToolWindowPanel(
                 when (val r = result) {
                     is AnalysisResult.Success -> {
                         currentFacts = r.facts
-                        generatedArtifacts = emptyList()
                         analysisSummaryPanel.update(r.facts)
                         generationFormPanel.reveal(r.facts)
                     }

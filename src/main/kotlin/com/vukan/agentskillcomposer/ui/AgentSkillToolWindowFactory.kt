@@ -12,6 +12,7 @@ class AgentSkillToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val panel = AgentSkillToolWindowPanel(project)
         val content = ContentFactory.getInstance().createContent(panel, null, false)
+        content.setDisposer(panel)
         toolWindow.contentManager.addContent(content)
     }
 }
