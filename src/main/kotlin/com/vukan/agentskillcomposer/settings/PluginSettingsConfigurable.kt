@@ -77,7 +77,7 @@ class PluginSettingsConfigurable : Configurable {
 
     override fun isModified(): Boolean {
         val settings = PluginSettings.getInstance()
-        val selectedProvider = providerCombo.selectedItem as? ProviderType ?: ProviderType.ANTHROPIC
+        val selectedProvider = selectedProvider()
         return currentApiKey() != (settings.apiKey ?: "") ||
             selectedProvider.name != settings.state.providerType ||
             baseUrlField.text != settings.state.baseUrl ||
@@ -86,12 +86,16 @@ class PluginSettingsConfigurable : Configurable {
 
     override fun apply() {
         val settings = PluginSettings.getInstance()
-        val selectedProvider = providerCombo.selectedItem as? ProviderType ?: ProviderType.ANTHROPIC
+        val selectedProvider = selectedProvider()
         settings.apiKey = currentApiKey().ifBlank { null }
         settings.state.providerType = selectedProvider.name
         settings.state.baseUrl = baseUrlField.text.ifBlank { selectedProvider.defaultBaseUrl }
         settings.state.modelName = currentModel()
     }
+
+    private fun selectedProvider(): ProviderType =
+        providerCombo.selectedItem as? ProviderType
+            ?: error("Provider combo selection is not a ProviderType — combo model invariant broken")
 
     override fun reset() {
         val settings = PluginSettings.getInstance()
@@ -150,12 +154,13 @@ class PluginSettingsConfigurable : Configurable {
 
         val priorSelection = currentModel()
 
-        // No coroutines — Dispatchers.EDT doesn't reliably resume in an application-level
-        // Configurable. Plain pool thread + invokeLater is guaranteed to work.
+        // runBlocking on a pool thread: Dispatchers.EDT doesn't reliably resume after
+        // withContext(IO) in an application-level Configurable lifecycle, so we stay off
+        // coroutines at the UI edge and bridge to the suspend API on the pool thread.
         ApplicationManager.getApplication().executeOnPooledThread {
             val result: Result<List<String>> = try {
                 val aiProvider = AiProviderFactory.create(provider, apiKey, baseUrl, "")
-                val models = (aiProvider as HttpAiProvider).listModelsBlocking()
+                val models = runBlocking { aiProvider.listModels() }
                 Result.success(models)
             } catch (e: Exception) {
                 Result.failure(e)
