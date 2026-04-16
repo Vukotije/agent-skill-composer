@@ -57,10 +57,11 @@ class AnthropicProvider(
 
     override fun extractModels(json: JsonObject): List<String> {
         val data = json.getAsJsonArray("data") ?: return emptyList()
-        return data.mapNotNull { el -> el.asJsonObject.get("id")?.asString }
+        return data.mapNotNull { el -> el.asJsonObject.get("id")?.asString }.sorted()
     }
 
     companion object {
+        // Last verified: 2026-04-17, source: https://docs.anthropic.com/en/api/versioning
         private const val API_VERSION = "2023-06-01"
         private const val MAX_TOKENS = 8192
     }
